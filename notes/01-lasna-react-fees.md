@@ -36,7 +36,3 @@ $ cast call 0x8888888888888888888888888888888888888888 '_maxChargeGas()' --rpc-u
 
 还收费。系统合约会捕获 `react()` 的回滚、记录失败，然后仍按已消耗的 gas 计费。因此我会用准确的订阅条件减少无关事件；在 `react()` 中遇到不需要处理的事件时尽早 `return`，不用 `revert` 作为过滤方式，并测试可能失败的路径，避免反复失败耗尽资金。
 
-## 参考
-
-- [Reactive 官方费用与系统交互说明](https://dev.reactive.network/economy)
-- [Reactive 官方调试说明](https://dev.reactive.network/debugging)
