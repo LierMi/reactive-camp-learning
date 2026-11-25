@@ -2,6 +2,10 @@
 
 # Reactive Builder Camp 学习记录
 
+## 任务笔记
+
+- [读懂费用：用 cast 查询 Lasna 系统合约参数](notes/01-lasna-react-fees.md)
+
 ## 环境准备
 - 操作系统：MacOS
 - Foundry 版本：1.10.0
