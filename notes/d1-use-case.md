@@ -1,30 +1,29 @@
-# 用例拆解卡：达到阈值的事件自动触发回调
+# 用例拆解卡：Uniswap V2 自动止损单
 
-我选用学习营 starter 的 `Ping → react() → onEvent()` 示例。源链和目标链都用 Ethereum Sepolia，Reactive 合约在 Lasna 上负责判断条件。
+选择 Reactive 生态中的 Uniswap V2 Stop Order 案例：用户预先设定止损价，当交易池中的兑换比例跌到阈值时，自动尝试卖出代币。
 
-## 1. 监听什么？
+## 1. 监听哪条链、哪个合约的什么事件？
 
-监听 **Ethereum Sepolia** 上 `CampOrigin` 合约（`0x62508085Dd4F9Ff39dC675A6847A6fe66996414D`）发出的 `Ping(address indexed who, uint256 value)` 事件。
+监听 **Ethereum Sepolia** 上 Uniswap V2 交易对合约（演示使用 `0x1DD11fD3690979f2602E42e7bBF68A19040E2e25`）发出的 `Sync(uint112 reserve0, uint112 reserve1)` 事件。该事件报告池中两种代币的最新储备量。
 
-## 2. 什么条件触发？
+## 2. 满足什么条件时触发？
 
-Lasna 上的 `CampReactive` 收到匹配的 `Ping` 后读取 `value`。当 `value ≥ 100`、剩余处理次数大于 0、目标合约地址已设置时，请求回调；不满足时正常结束，不请求回调。
+Reactive 合约根据 `reserve0` 和 `reserve1` 计算用户要卖出的代币相对另一种代币的兑换比例。如果比例低于或等于用户设定的止损阈值，且该订单尚未触发，就请求执行回调；否则继续等待后续事件。
 
-## 3. 在哪里做什么？
+## 3. 在哪条链做什么动作？
 
-回调发往 **Ethereum Sepolia** 上的 `CampCallback` 合约（`0x17a8240562a42b904e94edf458fA710E8284B912`）。它的 `onEvent()` 记录这次事件的数值和来源交易哈希，增加处理次数，并发出 `Handled` 事件。这是一个“事件满足条件后自动登记结果”的最小示例。
+演示中的回调合约部署在 **Ethereum Sepolia**。它收到请求后再次检查兑换比例，从用户处取得事先授权的代币，通过 Uniswap V2 Router 卖出，将换得的代币交还用户，并发出 `Stop` 事件确认完成。
 
 ```mermaid
 flowchart LR
-    origin["源链 Ethereum Sepolia：CampOrigin 发出 Ping"]
-    reactive["Reactive Lasna：CampReactive 检查 value ≥ 100"]
-    destination["目标链 Ethereum Sepolia：CampCallback 记录结果"]
-    origin -->|订阅到事件| reactive
-    reactive -->|满足条件，请求回调| destination
+    A["源链 Sepolia：Uniswap V2 交易池发出 Sync"]
+    B["Reactive：计算兑换比例，检查止损阈值"]
+    C["目标链 Sepolia：回调合约调用 Router 卖币"]
+    A --> B --> C
 ```
 
-## 4. 不用 Reactive 会怎样？简单在哪里，代价是什么？
+## 4. 不用 Reactive 怎么做？它简化了什么，代价是什么？
 
-在这个源链和目标链都是 Sepolia 的演示里，如果我能修改 `CampOrigin`，也可以直接在 `ping()` 中调用目标合约；此时 Reactive 并非必需。如果源合约不能修改，我就需要运行一个持续在线的机器人：监听日志、判断 `value`，再发送目标交易，并处理断线、重复事件和失败重试。
+不用 Reactive，需要自己运行持续在线的机器人，监听交易池事件、计算兑换比例、判断止损条件，并发送卖币交易。Reactive 让这些监听和条件判断由合约与网络执行，适合无法修改 Uniswap 交易池合约的场景。
 
-用 Reactive，可以把“监听哪种事件、何时触发、回调到哪里”写进合约，由网络按订阅执行。它更适合不能修改源合约，或者目标动作要去另一条链的情况。代价是要部署并维护相关合约，为 Lasna 上的 `react()` 和目标链回调分别准备费用；即使执行失败也可能收费，还要检查资金、欠费和回调结果。
+代价是用户需事先授权代币，并为 Reactive 执行及目标链回调准备费用；事件出现到交易执行之间，价格可能继续变化，回调也可能失败。因此止损触发不等于保证按设定价格成交。
