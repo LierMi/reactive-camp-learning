@@ -5,6 +5,7 @@
 ## 任务笔记
 
 - [读懂费用：用 cast 查询 Lasna 系统合约参数](notes/01-lasna-react-fees.md)
+- [用例拆解卡：达到阈值的事件自动触发回调](notes/d1-use-case.md)
 
 ## 环境准备
 - 操作系统：MacOS
