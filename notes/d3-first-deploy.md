@@ -9,8 +9,6 @@
 
 ## 触发记录
 
-**提交用 `react()` 交易链接：** https://lasna.reactscan.net/tx/0x77127196b69f30f64b96c25565ba9d637b7662f47a2ca7b98e3fb3d5966e83c2
-
 | 次数 | Sepolia 转账交易 | Lasna `react()` 交易 |
 | --- | --- | --- |
 | 1 | [源交易](https://sepolia.etherscan.io/tx/0xea175ca78914fc502bb72a50090f04ea5bf6753be83fd7394c3e2b22e36110ca) | [调用交易](https://lasna.reactscan.net/tx/0x77127196b69f30f64b96c25565ba9d637b7662f47a2ca7b98e3fb3d5966e83c2) |
