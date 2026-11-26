@@ -53,6 +53,7 @@ contract RecordingSystem {
 contract SepoliaTransferMonitorTest is Test {
     address internal constant SYSTEM = 0x8888888888888888888888888888888888888888;
     address internal constant TOKEN = address(0x1234);
+    address internal constant RECIPIENT = address(0xB0B);
     uint256 internal constant TRANSFER_TOPIC = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
     uint256 internal constant IGNORE = 0xa65f96fc951c35ead38878e0f0b7a3c744a6f5ccc1476b313353ce31712313ad;
 
@@ -63,7 +64,7 @@ contract SepoliaTransferMonitorTest is Test {
         vm.etch(SYSTEM, address(new RecordingSystem()).code);
         system = RecordingSystem(SYSTEM);
         vm.deal(address(this), 1 ether);
-        monitor = new SepoliaTransferMonitor{value: 0.1 ether}(TOKEN, 2);
+        monitor = new SepoliaTransferMonitor{value: 0.1 ether}(TOKEN, RECIPIENT, 2);
     }
 
     function test_constructorSubscribesOnlyToChosenToken() public view {
@@ -71,7 +72,7 @@ contract SepoliaTransferMonitorTest is Test {
         assertEq(system.token(), TOKEN);
         assertEq(system.topic0(), TRANSFER_TOPIC);
         assertEq(system.topic1(), IGNORE);
-        assertEq(system.topic2(), IGNORE);
+        assertEq(system.topic2(), uint256(uint160(RECIPIENT)));
         assertEq(system.topic3(), IGNORE);
         assertTrue(system.active());
         assertEq(address(monitor).balance, 0.1 ether);
@@ -110,6 +111,16 @@ contract SepoliaTransferMonitorTest is Test {
         assertTrue(system.active());
     }
 
+    function test_transferToOtherRecipientReturnsWithoutCounting() public {
+        IReactive.LogRecord memory record = transferRecord(100, 0xabc);
+        record.topic2 = uint256(uint160(address(0xCAFE)));
+        vm.prank(SYSTEM);
+        monitor.react(record);
+        assertEq(monitor.seen(), 0);
+        assertEq(monitor.remaining(), 2);
+        assertTrue(system.active());
+    }
+
     function test_ownerCanWithdrawRemainingFundsAfterUnsubscribe() public {
         vm.prank(SYSTEM);
         monitor.react(transferRecord(100, 0xabc));
@@ -131,7 +142,7 @@ contract SepoliaTransferMonitorTest is Test {
         record.contractAddress = TOKEN;
         record.topic0 = TRANSFER_TOPIC;
         record.topic1 = uint256(uint160(address(0xA11CE)));
-        record.topic2 = uint256(uint160(address(0xB0B)));
+        record.topic2 = uint256(uint160(RECIPIENT));
         record.opCode = 3;
         record.data = abi.encode(amount);
         record.txHash = txHash;

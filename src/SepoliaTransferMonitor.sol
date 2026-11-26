@@ -20,23 +20,28 @@ contract SepoliaTransferMonitor is AbstractReactive {
 
     address public immutable owner;
     address public immutable token;
+    address public immutable recipient;
     uint256 public remaining;
     uint256 public seen;
     uint256 public lastAmount;
     uint256 public lastTxHash;
 
-    constructor(address token_, uint256 maxEvents_) payable {
-        if (token_ == address(0) || maxEvents_ == 0) revert InvalidSetup();
+    constructor(address token_, address recipient_, uint256 maxEvents_) payable {
+        if (token_ == address(0) || recipient_ == address(0) || maxEvents_ == 0) revert InvalidSetup();
         owner = msg.sender;
         token = token_;
+        recipient = recipient_;
         remaining = maxEvents_;
-        SYSTEM.subscribe(SEPOLIA_CHAIN_ID, token_, TRANSFER_TOPIC, REACTIVE_IGNORE, REACTIVE_IGNORE, REACTIVE_IGNORE);
+        SYSTEM.subscribe(
+            SEPOLIA_CHAIN_ID, token_, TRANSFER_TOPIC, REACTIVE_IGNORE, uint256(uint160(recipient_)), REACTIVE_IGNORE
+        );
     }
 
     function react(LogRecord calldata log_) external onlySystem {
         if (
             remaining == 0 || log_.chainId != SEPOLIA_CHAIN_ID || log_.contractAddress != token
-                || log_.topic0 != TRANSFER_TOPIC || log_.opCode != 3 || log_.data.length != 32
+                || log_.topic0 != TRANSFER_TOPIC || log_.topic2 != uint256(uint160(recipient)) || log_.opCode != 3
+                || log_.data.length != 32
         ) return;
 
         uint256 amount = abi.decode(log_.data, (uint256));
@@ -54,7 +59,7 @@ contract SepoliaTransferMonitor is AbstractReactive {
 
         if (remaining == 0) {
             SYSTEM.unsubscribe(
-                SEPOLIA_CHAIN_ID, token, TRANSFER_TOPIC, REACTIVE_IGNORE, REACTIVE_IGNORE, REACTIVE_IGNORE
+                SEPOLIA_CHAIN_ID, token, TRANSFER_TOPIC, REACTIVE_IGNORE, uint256(uint160(recipient)), REACTIVE_IGNORE
             );
         }
     }
