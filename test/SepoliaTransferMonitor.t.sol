@@ -64,15 +64,15 @@ contract SepoliaTransferMonitorTest is Test {
         vm.etch(SYSTEM, address(new RecordingSystem()).code);
         system = RecordingSystem(SYSTEM);
         vm.deal(address(this), 1 ether);
-        monitor = new SepoliaTransferMonitor{value: 0.1 ether}(TOKEN, RECIPIENT, 2);
+        monitor = new SepoliaTransferMonitor{value: 0.1 ether}(TOKEN, 2);
     }
 
-    function test_constructorSubscribesOnlyToChosenToken() public view {
+    function test_constructorSubscribesToChosenTokenFromAnyRecipient() public view {
         assertEq(system.chainId(), 11155111);
         assertEq(system.token(), TOKEN);
         assertEq(system.topic0(), TRANSFER_TOPIC);
         assertEq(system.topic1(), IGNORE);
-        assertEq(system.topic2(), uint256(uint160(RECIPIENT)));
+        assertEq(system.topic2(), IGNORE);
         assertEq(system.topic3(), IGNORE);
         assertTrue(system.active());
         assertEq(address(monitor).balance, 0.1 ether);
@@ -111,13 +111,13 @@ contract SepoliaTransferMonitorTest is Test {
         assertTrue(system.active());
     }
 
-    function test_transferToOtherRecipientReturnsWithoutCounting() public {
+    function test_transferToOtherRecipientIsCounted() public {
         IReactive.LogRecord memory record = transferRecord(100, 0xabc);
         record.topic2 = uint256(uint160(address(0xCAFE)));
         vm.prank(SYSTEM);
         monitor.react(record);
-        assertEq(monitor.seen(), 0);
-        assertEq(monitor.remaining(), 2);
+        assertEq(monitor.seen(), 1);
+        assertEq(monitor.remaining(), 1);
         assertTrue(system.active());
     }
 
